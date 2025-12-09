@@ -79,6 +79,17 @@ vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right win
 vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
 vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
+vim.keymap.set("n", "<leader>r", function()
+	local file = vim.fn.expand("%:t:r") -- current file name without extension
+	local exe = "./build/" .. file -- build folder executable
+	vim.cmd("!" .. exe)
+end, { desc = "Run executable for current file" })
+
+vim.keymap.set("n", "<leader>m", function()
+	vim.cmd("w") -- save the current file
+	vim.cmd("make") -- run make
+end, { desc = "Save and make" })
+
 -- Changing to the next buffer with Tab
 vim.keymap.set("n", "<Tab>", ":BufferLineCycleNext<CR>", { desc = "Next buffer" })
 -- Changing to the previous buffer with Shift+Tab
@@ -107,6 +118,21 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 	end
 end
 
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "c",
+	callback = function()
+		vim.opt_local.makeprg = "mkdir -p build && clang % -o build/%:r && ./build/%:r"
+	end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "asm",
+	callback = function()
+		vim.b.conform_format_on_save = false
+		vim.opt_local.makeprg = "mkdir -p build && arch -x86_64 clang % -o build/%:r && ./build/%:r"
+	end,
+})
+
 ---@type vim.Option
 local rtp = vim.opt.rtp
 rtp:prepend(lazypath)
@@ -114,6 +140,9 @@ rtp:prepend(lazypath)
 -- [[ Configure and install plugins ]]
 -- NOTE: Here is where you install your plugins.
 require("lazy").setup({
+
+	{ "ThePrimeagen/vim-be-good" },
+
 	"NMAC427/guess-indent.nvim", -- Detect tabstop and shiftwidth automatically
 
 	{
@@ -135,7 +164,6 @@ require("lazy").setup({
 			},
 		},
 	},
-
 
 	{
 		"goolord/alpha-nvim",
@@ -185,32 +213,13 @@ require("lazy").setup({
 			require("nvim-tree").setup({
 				filters = {
 					dotfiles = false, -- set to false to show .env
+					custom = { "^.DS_Store$" },
 				},
 			})
-			-- Open/Close file explorer with <leader>±
-			vim.keymap.set("n", "<leader>±", ":NvimTreeToggle<CR>", { desc = "Toggle NvimTree" })
-			-- Focurs on file explorer with <leader>§
+			-- Open/Close file explorer with <leader>e
+			vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
+			-- Focus on file explorer with <leader>§
 			vim.keymap.set("n", "<leader>§", ":NvimTreeFocus<CR>", { desc = "Focus NvimTree" })
-		end,
-	},
-
-	{
-		"navarasu/onedark.nvim",
-		priority = 1000,
-		config = function()
-			require("onedark").setup({
-				style = "deep", -- dark, darker, cool, deep, warm, warmer, light
-				transparent = false,
-				term_colors = true,
-				ending_tildes = false,
-				cmp_itemkind_reverse = false,
-				colors = {
-					bg0 = "#000000", -- Fondo completamente negro
-					bg1 = "#0a0a0a", -- Fondo secundario muy oscuro
-					bg2 = "#1a1a1a", -- Para elementos flotantes
-				},
-			})
-			vim.cmd.colorscheme("onedark")
 		end,
 	},
 
@@ -231,7 +240,7 @@ require("lazy").setup({
 		end,
 	},
 
-	{             -- Useful plugin to show you pending keybinds.
+	{ -- Useful plugin to show you pending keybinds.
 		"folke/which-key.nvim",
 		event = "VimEnter", -- Sets the loading event to 'VimEnter'
 		opts = {
@@ -300,7 +309,7 @@ require("lazy").setup({
 			},
 			{ "nvim-telescope/telescope-ui-select.nvim" },
 
-			{ "nvim-tree/nvim-web-devicons",            enabled = vim.g.have_nerd_font },
+			{ "nvim-tree/nvim-web-devicons", enabled = vim.g.have_nerd_font },
 		},
 		config = function()
 			require("telescope").setup({
@@ -324,16 +333,15 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>sg", builtin.live_grep, { desc = "[S]earch by [G]rep" })
 			vim.keymap.set("n", "<leader>sd", builtin.diagnostics, { desc = "[S]earch [D]iagnostics" })
 			vim.keymap.set("n", "<leader>sr", builtin.resume, { desc = "[S]earch [R]esume" })
-			vim.keymap.set("n", "<leader>s.", builtin.oldfiles,
-				{ desc = '[S]earch Recent Files ("." for repeat)' })
-			vim.keymap.set("n", "<leader><leader>", builtin.buffers, { desc = "[ ] Find existing buffers" })
+			vim.keymap.set("n", "<leader>s.", builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
+			vim.keymap.set("n", "<leader><leader>", builtin.buffers, { desc = "Find existing buffers" })
 
 			vim.keymap.set("n", "<leader>/", function()
 				builtin.current_buffer_fuzzy_find(require("telescope.themes").get_dropdown({
 					winblend = 10,
 					previewer = false,
 				}))
-			end, { desc = "[/] Fuzzily search in current buffer" })
+			end, { desc = "Fuzzily search in current buffer" })
 
 			vim.keymap.set("n", "<leader>s/", function()
 				builtin.live_grep({
@@ -370,7 +378,7 @@ require("lazy").setup({
 			"WhoIsSethDaniel/mason-tool-installer.nvim",
 
 			-- Useful status updates for LSP.
-			{ "j-hui/fidget.nvim",    opts = {} },
+			{ "j-hui/fidget.nvim", opts = {} },
 
 			-- Allows extra capabilities provided by blink.cmp
 			"saghen/blink.cmp",
@@ -381,8 +389,7 @@ require("lazy").setup({
 				callback = function(event)
 					local map = function(keys, func, desc, mode)
 						mode = mode or "n"
-						vim.keymap.set(mode, keys, func,
-							{ buffer = event.buf, desc = "LSP: " .. desc })
+						vim.keymap.set(mode, keys, func, { buffer = event.buf, desc = "LSP: " .. desc })
 					end
 
 					map("grn", vim.lsp.buf.rename, "[R]e[n]ame")
@@ -391,8 +398,7 @@ require("lazy").setup({
 
 					map("grr", require("telescope.builtin").lsp_references, "[G]oto [R]eferences")
 
-					map("gri", require("telescope.builtin").lsp_implementations,
-						"[G]oto [I]mplementation")
+					map("gri", require("telescope.builtin").lsp_implementations, "[G]oto [I]mplementation")
 
 					-- Jump to the definition of the word under your cursor.
 					map("grd", require("telescope.builtin").lsp_definitions, "[G]oto [D]efinition")
@@ -401,17 +407,14 @@ require("lazy").setup({
 					map("grD", vim.lsp.buf.declaration, "[G]oto [D]eclaration")
 
 					-- Fuzzy find all the symbols in your current document.
-					map("gO", require("telescope.builtin").lsp_document_symbols,
-						"Open Document Symbols")
+					map("gO", require("telescope.builtin").lsp_document_symbols, "Open Document Symbols")
 
 					-- Fuzzy find all the symbols in your current workspace.
-					map("gW", require("telescope.builtin").lsp_dynamic_workspace_symbols,
-						"Open Workspace Symbols")
+					map("gW", require("telescope.builtin").lsp_dynamic_workspace_symbols, "Open Workspace Symbols")
 
 					-- Jump to the type of the word under your cursor.
 					--  the definition of its *type*, not where it was *defined*.
-					map("grt", require("telescope.builtin").lsp_type_definitions,
-						"[G]oto [T]ype Definition")
+					map("grt", require("telescope.builtin").lsp_type_definitions, "[G]oto [T]ype Definition")
 
 					---@param client vim.lsp.Client
 					---@param method vim.lsp.protocol.Method
@@ -427,16 +430,15 @@ require("lazy").setup({
 
 					local client = vim.lsp.get_client_by_id(event.data.client_id)
 					if
-					    client
-					    and client_supports_method(
-						    client,
-						    vim.lsp.protocol.Methods.textDocument_documentHighlight,
-						    event.buf
-					    )
+						client
+						and client_supports_method(
+							client,
+							vim.lsp.protocol.Methods.textDocument_documentHighlight,
+							event.buf
+						)
 					then
 						local highlight_augroup =
-						    vim.api.nvim_create_augroup("kickstart-lsp-highlight",
-							    { clear = false })
+							vim.api.nvim_create_augroup("kickstart-lsp-highlight", { clear = false })
 						vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
 							buffer = event.buf,
 							group = highlight_augroup,
@@ -450,14 +452,12 @@ require("lazy").setup({
 						})
 
 						vim.api.nvim_create_autocmd("LspDetach", {
-							group = vim.api.nvim_create_augroup("kickstart-lsp-detach",
-								{ clear = true }),
+							group = vim.api.nvim_create_augroup("kickstart-lsp-detach", { clear = true }),
 							callback = function(event2)
 								vim.lsp.buf.clear_references()
 								vim.api.nvim_clear_autocmds({
-									group =
-									"kickstart-lsp-highlight",
-									buffer = event2.buf
+									group = "kickstart-lsp-highlight",
+									buffer = event2.buf,
 								})
 							end,
 						})
@@ -466,13 +466,12 @@ require("lazy").setup({
 					-- The following code creates a keymap to toggle inlay hints in your
 					-- code, if the language server you are using supports them
 					if
-					    client
-					    and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf)
+						client
+						and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf)
 					then
 						map("<leader>th", function()
 							vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({
-								bufnr =
-								    event.buf
+								bufnr = event.buf,
 							}))
 						end, "[T]oggle Inlay [H]ints")
 					end
@@ -510,6 +509,7 @@ require("lazy").setup({
 			local capabilities = require("blink.cmp").get_lsp_capabilities()
 
 			local servers = {
+				clangd = {},
 				lua_ls = {
 					settings = {
 						Lua = {
@@ -538,6 +538,7 @@ require("lazy").setup({
 
 			local ensure_installed = vim.tbl_keys(servers or {})
 			vim.list_extend(ensure_installed, {
+				"clangd", -- C/C++
 				-- Herramientas para React/TypeScript
 				"typescript-language-server", -- TypeScript LSP
 				"emmet-ls", -- Emmet LSP
@@ -552,12 +553,54 @@ require("lazy").setup({
 				handlers = {
 					function(server_name)
 						local server = servers[server_name] or {}
-						server.capabilities = vim.tbl_deep_extend("force", {}, capabilities,
-							server.capabilities or {})
+						server.capabilities = vim.tbl_deep_extend("force", {}, capabilities, server.capabilities or {})
 						require("lspconfig")[server_name].setup(server)
 					end,
 				},
 			})
+		end,
+	},
+
+	{
+		"catppuccin/nvim",
+		name = "catppuccin",
+		priority = 1000,
+		config = function()
+			require("catppuccin").setup({
+				flavour = "latte", -- Puede ser "latte", "macchiato", "mocha" o "frappe"
+				background = { -- Para cambiar entre light y dark automáticamente
+					light = "latte",
+					dark = "mocha",
+				},
+				transparent_background = false,
+				show_end_of_buffer = false,
+				styles = {
+					comments = { "italic" },
+					conditionals = { "italic" },
+					loops = {},
+					functions = {},
+					keywords = {},
+					strings = {},
+					variables = {},
+					numbers = {},
+					booleans = {},
+					properties = {},
+					types = {},
+					operators = {},
+				},
+				integrations = {
+					treesitter = true,
+					native_lsp = { enabled = true },
+					lsp_trouble = true,
+					cmp = true,
+					gitsigns = true,
+					telescope = true,
+					nvimtree = true,
+					notify = true,
+					mini = true,
+				},
+			})
+			vim.cmd.colorscheme("catppuccin")
 		end,
 	},
 
@@ -577,20 +620,13 @@ require("lazy").setup({
 		},
 		opts = {
 			notify_on_error = false,
-			format_on_save = function(bufnr)
-				local disable_filetypes = { c = true, cpp = true }
-				if disable_filetypes[vim.bo[bufnr].filetype] then
-					return nil
-				else
-					return {
-						timeout_ms = 500,
-						lsp_format = "fallback",
-					}
-				end
-			end,
+			format_on_save = true,
 			formatters_by_ft = {
 				lua = { "stylua" },
-				-- Formatters para React/TypeScript
+				python = { "black" },
+				c = { "clang-format" },
+				cpp = { "clang-format" },
+				asm = { "asmfmt" },
 				javascript = { "prettier" },
 				typescript = { "prettier" },
 				javascriptreact = { "prettier" },
@@ -604,12 +640,11 @@ require("lazy").setup({
 		},
 	},
 
-	{ -- Autocompletion
+	{
 		"saghen/blink.cmp",
 		event = "VimEnter",
 		version = "1.*",
 		dependencies = {
-			-- Snippet Engine
 			{
 				"L3MON4D3/LuaSnip",
 				version = "2.*",
@@ -624,21 +659,22 @@ require("lazy").setup({
 			},
 			"folke/lazydev.nvim",
 		},
-		--- @module 'blink.cmp'
-		--- @type blink.cmp.Config
 		opts = {
 			keymap = {
-				preset = "default",
+				["<Tab>"] = { "select_next", "snippet_forward", "fallback" },
+				["<S-Tab>"] = { "select_prev", "snippet_backward", "fallback" },
+				["<CR>"] = { "accept", "fallback" },
+				["<C-e>"] = { "hide", "fallback" },
+				["<C-f>"] = { "scroll_documentation_down", "fallback" },
+				["<C-b>"] = { "scroll_documentation_up", "fallback" },
 			},
 
 			appearance = {
 				nerd_font_variant = "mono",
 			},
-
 			completion = {
 				documentation = { auto_show = false, auto_show_delay_ms = 500 },
 			},
-
 			sources = {
 				default = { "lsp", "path", "snippets", "lazydev" },
 				providers = {
@@ -647,9 +683,7 @@ require("lazy").setup({
 			},
 
 			snippets = { preset = "luasnip" },
-
 			fuzzy = { implementation = "lua" },
-
 			signature = { enabled = true },
 		},
 	},
@@ -758,13 +792,28 @@ vim.filetype.add({
 	},
 })
 
+-- C files: 4-space tabs, convert tabs to spaces
 vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "c", "cpp", "asm" },
+	pattern = "c",
+	callback = function()
+		vim.b.guess_indent_disable = 1
+		vim.bo.tabstop = 2
+		vim.bo.shiftwidth = 2
+		vim.bo.softtabstop = 2
+		vim.bo.expandtab = true
+		vim.bo.autoindent = true
+		vim.bo.smartindent = true
+	end,
+})
+
+-- ASM files: 4-space tabs, keep real tabs
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "asm",
 	callback = function()
 		vim.bo.tabstop = 4
 		vim.bo.shiftwidth = 4
 		vim.bo.softtabstop = 4
-		vim.bo.expandtab = true
+		vim.bo.expandtab = false
 		vim.bo.autoindent = true
 		vim.bo.smartindent = true
 	end,
